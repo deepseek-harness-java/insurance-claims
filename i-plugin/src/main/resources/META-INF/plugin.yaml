@@ -1,0 +1,6 @@
+id: insurance-copilot
+name: AI 保险理赔助手
+version: 1.0.0
+author: xfg-studio
+description: AI 保险理赔助手，支持保单查询、理赔事前核验（保单有效性/免赔额/赔付比例/上限）、提交理赔（二次确认）、审核赔付与拒赔、补材料、理赔统计。
+entrypoint: cn.xiaofuge.i.plugin.InsurancePlugin

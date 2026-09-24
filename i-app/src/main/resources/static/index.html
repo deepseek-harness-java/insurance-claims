@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 理赔助手台 · Insurance Claims</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"PingFang SC","Microsoft YaHei",sans-serif; background:#f5f6f8; color:#22272e; }
+  header { background:linear-gradient(135deg,#1f3d33,#3a6b58); color:#fff; padding:18px 28px; display:flex; justify-content:space-between; align-items:center; }
+  header h1 { font-size:20px; }
+  header .sub { font-size:12px; opacity:.85; margin-top:4px; }
+  header .badge { font-size:13px; background:rgba(255,255,255,.15); padding:6px 14px; border-radius:20px; }
+  main { display:grid; grid-template-columns:1fr 340px; gap:16px; padding:16px 20px; max-width:1240px; margin:0 auto; }
+  .col { display:flex; flex-direction:column; gap:16px; }
+  .card { background:#fff; border-radius:12px; padding:16px 18px; box-shadow:0 1px 4px rgba(31,61,51,.08); }
+  .card h2 { font-size:15px; margin-bottom:12px; color:#1f3d33; }
+  .stat { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  .stat div { background:#eef4f1; border-radius:10px; padding:12px; }
+  .stat b { display:block; font-size:22px; color:#3a6b58; margin-top:4px; }
+  .stat span { font-size:12px; color:#71808f; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; color:#71808f; font-weight:500; padding:8px 6px; border-bottom:1px solid #e3e8ee; }
+  td { padding:9px 6px; border-bottom:1px solid #f0f3f6; }
+  .tag { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; }
+  .tag.y { background:#fdf3e0; color:#c07f16; }
+  .tag.g { background:#e3f4e9; color:#218a58; }
+  .tag.r { background:#fdeaea; color:#c74a44; }
+  .tag.b { background:#e7f0fb; color:#2e5fa3; }
+  .cl { border:1px solid #e3e8ee; border-radius:10px; padding:10px 14px; margin-bottom:10px; }
+  .cl .top { display:flex; justify-content:space-between; margin-bottom:4px; }
+  .cl b { color:#1f3d33; font-size:13.5px; }
+  .cl .meta { font-size:12.5px; color:#5a6a7a; line-height:1.7; }
+  .bar { height:8px; background:#e3e8ee; border-radius:4px; overflow:hidden; margin-top:6px; }
+  .bar i { display:block; height:100%; background:#3a6b58; }
+  .bar i.warn { background:#c07f16; }
+  .ai-panel { position:sticky; top:16px; display:flex; flex-direction:column; height:calc(100vh - 32px); background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 1px 4px rgba(31,61,51,.08); }
+  .ai-head { background:linear-gradient(135deg,#1f3d33,#3a6b58); color:#fff; padding:14px 16px; }
+  .ai-head b { font-size:15px; }
+  .ai-head .sub { font-size:11px; opacity:.85; margin-top:3px; }
+  .ai-body { flex:1; overflow-y:auto; padding:14px; font-size:13.5px; line-height:1.75; }
+  .ai-body .msg { margin-bottom:12px; white-space:pre-wrap; word-break:break-word; }
+  .ai-body .msg.user { background:#eef4f1; border-radius:10px 10px 2px 10px; padding:8px 12px; margin-left:24px; color:#22272e; }
+  .chips { padding:8px 14px; display:flex; flex-wrap:wrap; gap:6px; border-top:1px solid #eef1f5; }
+  .chip { font-size:12px; background:#eef4f1; color:#1f3d33; border:none; border-radius:14px; padding:5px 10px; cursor:pointer; }
+  .chip:hover { background:#dfe9e4; }
+  .ai-input { display:flex; gap:8px; padding:10px 14px; border-top:1px solid #eef1f5; }
+  .ai-input input { flex:1; border:1px solid #d5dce4; border-radius:8px; padding:9px 12px; font-size:13px; outline:none; }
+  .ai-input input:focus { border-color:#3a6b58; }
+  .ai-input button { background:#3a6b58; color:#fff; border:none; border-radius:8px; padding:0 18px; font-size:13px; cursor:pointer; }
+  .ai-input button:disabled { background:#a9bdc2; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>🛡️ AI 理赔助手台</h1>
+    <div class="sub">保单 · 核验 · 提交 · 审核 · 统计 | 保险理赔云平台</div>
+  </div>
+  <div class="badge" id="topBadge">加载中…</div>
+</header>
+<main>
+  <div class="col">
+    <div class="card">
+      <h2>理赔总览</h2>
+      <div class="stat" id="stats"></div>
+    </div>
+    <div class="card">
+      <h2>分险种赔付</h2>
+      <div id="products"></div>
+    </div>
+    <div class="card">
+      <h2>理赔案件</h2>
+      <div id="claims"></div>
+    </div>
+  </div>
+  <div class="ai-panel">
+    <div class="ai-head">
+      <b>🏥 AI 理赔助手</b>
+      <div class="sub">insurance-copilot · 保单 / 核验 / 提交 / 审核 / 统计</div>
+    </div>
+    <div class="ai-body" id="aiBody"></div>
+    <div class="chips">
+      <button class="chip" onclick="ask('现在有哪些待审核的理赔案件？')">待审核</button>
+      <button class="chip" onclick="ask('王先生的医疗险保单住院花 8600 能赔多少？')">核验测算</button>
+      <button class="chip" onclick="ask('C5001 这个案子进展如何？')">查进度</button>
+      <button class="chip" onclick="ask('今年各险种赔付情况怎么样？')">赔付统计</button>
+    </div>
+    <div class="ai-input">
+      <input id="q" placeholder="例如：车险追尾维修花 12000，能赔多少？我的案子批了吗？" onkeydown="if(event.key==='Enter')send()">
+      <button id="sendBtn" onclick="send()">发送</button>
+    </div>
+  </div>
+</main>
+<script>
+const j = r => Promise.resolve(r).then(resp => resp.json()).then(d => d.data ?? d);
+const stTag = s => s==='待审核' ? '<span class="tag y">待审核</span>' : s==='已赔付' ? '<span class="tag g">已赔付</span>' : s==='材料补齐中' ? '<span class="tag b">材料补齐中</span>' : '<span class="tag r">已拒赔</span>';
+async function load() {
+  try {
+    const st = await j(fetch('/api/stats'));
+    document.getElementById('topBadge').textContent = `案件 ${st.totalClaims} · 待审核 ${st.pending}`;
+    document.getElementById('stats').innerHTML = `
+      <div><span>案件总数</span><b>${st.totalClaims}</b></div>
+      <div><span>待审核</span><b style="color:${st.pending>0?'#c07f16':'#3a6b58'}">${st.pending}</b></div>
+      <div><span>已赔付金额</span><b>¥${st.paidAmount}</b></div>
+      <div><span>建议</span><b style="font-size:12px;line-height:1.5;color:#5a6a7a">${st.advice}</b></div>`;
+    const ps = await j(fetch('/api/policies'));
+    document.getElementById('products').innerHTML = st.products.map(p => `
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;font-size:13px"><b>${p.product}</b>
+          <span style="color:#71808f">保单 ${p.policies} 份 · 本年已赔 ¥${p.paidThisYear}</span></div>
+        <div style="font-size:11px;color:#8b99a8;margin-top:2px">免赔 ¥${p.deductible} · 赔付比例 ${Math.round(p.payoutRate*100)}%</div>
+      </div>`).join('');
+    const cs = await j(fetch('/api/claims'));
+    document.getElementById('claims').innerHTML = cs.map(c => `
+      <div class="cl">
+        <div class="top"><b>${c.id} · ${c.reason}</b>${stTag(c.status)}</div>
+        <div class="meta">${c.holder}（${c.product} · ${c.policyId}）· 申请 ¥${c.amount} · ${c.filedAt}
+        ${c.payout>0?` · 赔付 ¥${c.payout}`:''}
+        ${c.decision?`<br>审核：${c.decision}`:''}</div>
+      </div>`).join('');
+  } catch(e) { console.error(e); }
+}
+function ask(t) { document.getElementById('q').value = t; send(); }
+async function send() {
+  const inp = document.getElementById('q'), btn = document.getElementById('sendBtn');
+  const text = inp.value.trim(); if (!text || btn.disabled) return;
+  inp.value = ''; btn.disabled = true;
+  const body = document.getElementById('aiBody');
+  const u = document.createElement('div'); u.className = 'msg user'; u.textContent = text; body.appendChild(u);
+  const a = document.createElement('div'); a.className = 'msg'; a.textContent = '…'; body.appendChild(a);
+  try {
+    const resp = await fetch('/api/assistant/stream', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({message:text}) });
+    const reader = resp.body.getReader(), dec = new TextDecoder(); let buf = '', out = '';
+    for (;;) {
+      const {done, value} = await reader.read(); if (done) break;
+      buf += dec.decode(value, {stream:true});
+      const parts = buf.split('\n\n'); buf = parts.pop();
+      for (const p of parts) {
+        for (const line of p.split('\n')) {
+          if (!line.startsWith('data:')) continue;
+          const dstr = line.slice(5).trim(); if (!dstr || dstr === '[DONE]') continue;
+          try {
+            const d = JSON.parse(dstr);
+            const piece = d.content ?? d.delta ?? '';
+            if (typeof piece === 'string' && piece) { out += piece; a.textContent = out; body.scrollTop = body.scrollHeight; }
+          } catch(e) {}
+        }
+      }
+    }
+    if (!out) a.textContent = '（无返回内容）';
+  } catch(e) { a.textContent = 'AI 服务暂时不可用：' + e.message; }
+  btn.disabled = false; body.scrollTop = body.scrollHeight;
+}
+load();
+</script>
+</body>
+</html>

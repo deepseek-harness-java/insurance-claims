@@ -1,0 +1,12 @@
+server:
+  port: 18097
+spring:
+  application:
+    name: insurance-claims
+  mvc:
+    async:
+      request-timeout: 180s
+i:
+  assistant:
+    harness-base-url: http://127.0.0.1:8090
+    agent-id: insurance-copilot
